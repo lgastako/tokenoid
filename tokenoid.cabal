@@ -1,0 +1,91 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.36.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           tokenoid
+version:        0.1.0.0
+description:    README at <https://github.com/lgastako/tokenoid#readme>
+homepage:       https://github.com/lgastako/tokenoid#readme
+bug-reports:    https://github.com/lgastako/tokenoid/issues
+author:         John Evans
+maintainer:     lgastako@gmail.com
+copyright:      2024 John Evans
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/lgastako/tokenoid
+
+library
+  exposed-modules:
+      Tokenoid.Prelude
+  other-modules:
+      Paths_tokenoid
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , containers
+    , generic-lens
+    , lens
+    , protolude
+    , text
+    , uuid
+    , vector
+  default-language: Haskell2010
+
+executable tokenoid
+  main-is: Main.hs
+  other-modules:
+      Paths_tokenoid
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , containers
+    , generic-lens
+    , lens
+    , protolude
+    , text
+    , tokenoid
+    , uuid
+    , vector
+  default-language: Haskell2010
+
+test-suite tokenoid-test
+  type: exitcode-stdio-1.0
+  main-is: Driver.hs
+  other-modules:
+      Paths_tokenoid
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , bytestring
+    , containers
+    , generic-lens
+    , hspec
+    , lens
+    , protolude
+    , tasty
+    , tasty-discover
+    , tasty-hspec
+    , tasty-quickcheck
+    , text
+    , tokenoid
+    , uuid
+    , vector
+  default-language: Haskell2010
