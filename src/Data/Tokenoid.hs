@@ -1,15 +1,21 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Data.Tokenoid
   ( InputTokens (..),
     OutputTokens (..),
+    Rates (..),
     Tokenoid (..),
     consume,
     consumed,
+    cost,
     from,
     fromInputTokens,
     fromOutputTokens,
@@ -19,9 +25,11 @@ module Data.Tokenoid
     produced,
     roughEstimateInput,
     roughEstimateOutput,
+    runTokenoid,
     runTokenoidT,
     runTokenoidIO,
     spend,
+    spent,
   )
 where
 
@@ -35,14 +43,27 @@ newtype InputTokens n = InputTokens (Sum n)
       Eq,
       Foldable,
       Functor,
-      Semigroup,
       Monad,
       Monoid,
       Num,
       Ord,
       Read,
+      Semigroup,
       Show
     )
+
+instance (Enum n) => Enum (InputTokens n) where
+  fromEnum (InputTokens (Sum n)) = fromEnum n
+  toEnum = InputTokens . Sum . toEnum
+
+instance (Real n) => Real (InputTokens n) where
+  toRational (InputTokens (Sum n)) = toRational n
+
+instance (Integral n) => Integral (InputTokens n) where
+  toInteger (InputTokens (Sum n)) = toInteger n
+  quotRem (InputTokens (Sum n)) (InputTokens (Sum m)) = (InputTokens (Sum q), InputTokens (Sum r))
+    where
+      (q, r) = quotRem n m
 
 newtype OutputTokens n = OutputTokens (Sum n)
   deriving newtype
@@ -60,26 +81,54 @@ newtype OutputTokens n = OutputTokens (Sum n)
       Show
     )
 
+instance (Enum n) => Enum (OutputTokens n) where
+  fromEnum (OutputTokens (Sum n)) = fromEnum n
+  toEnum = OutputTokens . Sum . toEnum
+
+instance (Real n) => Real (OutputTokens n) where
+  toRational (OutputTokens (Sum n)) = toRational n
+
+instance (Integral n) => Integral (OutputTokens n) where
+  toInteger (OutputTokens (Sum n)) = toInteger n
+  quotRem (OutputTokens (Sum n)) (OutputTokens (Sum m)) = (OutputTokens (Sum q), OutputTokens (Sum r))
+    where
+      (q, r) = quotRem n m
+
 newtype Tokenoid n
   = Tokenoid
       ( InputTokens n,
         OutputTokens n
       )
-  deriving newtype (Eq, Semigroup, Monoid, Ord, Read, Show)
-
-inputTokens :: forall n. Lens' (Tokenoid n) (InputTokens n)
-inputTokens = lens (\(Tokenoid (i, _)) -> i) (\(Tokenoid (_, o)) i -> Tokenoid (i, o))
-
-outputTokens :: forall n. Lens' (Tokenoid n) (OutputTokens n)
-outputTokens = lens (\(Tokenoid (_, o)) -> o) (\(Tokenoid (i, _)) o -> Tokenoid (i, o))
+  deriving newtype
+    ( Eq,
+      Semigroup,
+      Monoid,
+      Ord,
+      Read,
+      Show
+    )
 
 newtype TokenoidT m n a = TokenoidT {runTokenoidT :: StateT (Tokenoid n) m a}
   deriving newtype
     ( Applicative,
       Functor,
       Monad,
+      MonadState (Tokenoid n),
       MonadIO
     )
+
+type TokenoidM = TokenoidT Identity
+
+data Rates r = Rates
+  { inputCost :: r,
+    outputCost :: r
+  }
+
+inputTokens :: forall n. Lens' (Tokenoid n) (InputTokens n)
+inputTokens = lens (\(Tokenoid (i, _)) -> i) (\(Tokenoid (_, o)) i -> Tokenoid (i, o))
+
+outputTokens :: forall n. Lens' (Tokenoid n) (OutputTokens n)
+outputTokens = lens (\(Tokenoid (_, o)) -> o) (\(Tokenoid (i, _)) o -> Tokenoid (i, o))
 
 produce :: forall m n. (Monad m, Num n) => InputTokens n -> TokenoidT m n ()
 produce n = TokenoidT $ inputTokens += n
@@ -98,8 +147,14 @@ spend (i, o) = TokenoidT $ do
   inputTokens += i
   outputTokens += o
 
+spent :: forall m n. (Monad m) => TokenoidT m n (InputTokens n, OutputTokens n)
+spent = TokenoidT $ (,) <$> use inputTokens <*> use outputTokens
+
 runTokenoidIO :: forall n a. (Num n) => TokenoidT IO n a -> IO (a, Tokenoid n)
 runTokenoidIO = flip runStateT mempty . runTokenoidT
+
+runTokenoid :: forall n a. (Num n) => TokenoidM n a -> (a, Tokenoid n)
+runTokenoid = flip runState mempty . runTokenoidT
 
 fromInputTokens :: forall n. (Num n) => InputTokens n -> Tokenoid n
 fromInputTokens i = mempty & inputTokens .~ i
@@ -121,3 +176,18 @@ roughEstimate = Sum . adjust . length . T.words
 
 roughEstimateOutput :: Text -> OutputTokens Int
 roughEstimateOutput = OutputTokens <$> roughEstimate
+
+cost ::
+  forall n r.
+  ( Num r,
+    Integral (InputTokens n),
+    Integral (OutputTokens n)
+  ) =>
+  Rates r ->
+  Tokenoid n ->
+  r
+cost Rates {..} t =
+  inputCost
+    * fromIntegral (t ^. inputTokens)
+    + outputCost
+    * fromIntegral (t ^. outputTokens)

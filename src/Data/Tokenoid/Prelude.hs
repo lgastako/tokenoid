@@ -7,7 +7,7 @@ module Data.Tokenoid.Prelude
   )
 where
 
-import Control.Lens as X (Lens', lens, use, (+=), (.~))
+import Control.Lens as X (Lens', lens, (^.), use, (+=), (.~))
 import Protolude as X
 import Protolude.Conv (Leniency (Lenient), StringConv (strConv))
 

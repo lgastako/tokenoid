@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Main (main) where
 
+import Data.Tokenoid (Rates (Rates), consume, cost, produce, runTokenoidIO, spent)
 import qualified Data.Tokenoid as Tokenoid
 import Data.Tokenoid.Prelude
 import Options.Applicative
@@ -63,3 +66,19 @@ outputTokenFileP = tokenFileP 'o' "output-tokens" "File with output tokens"
 
 tokenFileP :: Char -> Text -> Text -> Parser FilePath
 tokenFileP c l h = strOption (short c <> long (cs l) <> metavar "FILE" <> help (cs h))
+
+-- TODO expose as subcommand or something
+_example :: IO ()
+_example = void . runTokenoidIO @Int $ do
+  produce 5
+  consume 10
+  print =<< spent
+  void . replicateM 3 $ do
+    produce 8
+    consume 24
+  print =<< spent
+  print . cost (Rates inputCost outputCost) =<< get
+  where
+    inputCost, outputCost :: Double
+    inputCost = 1.25
+    outputCost = 2.75
