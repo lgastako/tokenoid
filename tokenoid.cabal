@@ -25,7 +25,8 @@ source-repository head
 
 library
   exposed-modules:
-      Tokenoid.Prelude
+      Data.Tokenoid
+      Data.Tokenoid.Prelude
   other-modules:
       Paths_tokenoid
   hs-source-dirs:
@@ -56,6 +57,7 @@ executable tokenoid
     , containers
     , generic-lens
     , lens
+    , optparse-applicative
     , protolude
     , text
     , tokenoid
